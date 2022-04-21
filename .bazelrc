@@ -1,0 +1,10 @@
+build --incompatible_require_linker_input_cc_api
+build --incompatible_enable_cc_toolchain_resolution
+build --disk_cache=~/.cache/bazel-disk-cache
+
+build:lto --copt=-flto
+build:lto --cxxopt=-flto
+build:lto --linkopt=-flto
+
+build --config=lto
+build --extra_toolchains=@llvm_base_toolchain//:cc-toolchain-x86_64-linux
