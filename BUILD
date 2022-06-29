@@ -13,10 +13,17 @@ pkg_files(
     prefix = "benchmarks/mibench/automotive",
 )
 
+pkg_files(
+    name = "mibench_consumer",
+    srcs = ["//benchmarks/mibench/consumer:all"],
+    prefix = "benchmarks/mibench/consumer",
+)
+
 pkg_tar(
     name = "bitcode_tar",
     srcs = [
         ":linux",
         ":mibench_automotive",
+        ":mibench_consumer",
     ],
 )

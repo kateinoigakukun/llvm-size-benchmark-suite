@@ -45,6 +45,14 @@ http_archive(
 )
 
 http_archive(
+    name = "mibench_consumer",
+    sha256 = "86d76a66fa567953c7b814a6c6e816c6af0afab59610160acb8036899d03d1f9",
+    strip_prefix = "consumer",
+    build_file_content = """exports_files(glob(["**"]))""",
+    url = "https://vhosts.eecs.umich.edu/mibench/consumer.tar.gz",
+)
+
+http_archive(
     name = "linux_kernel_src",
     sha256 = "6e3cd56ee83a9cb5ac3fde1442c40367ab67368946c4c93bbeb1c65664a0d3c5",
     strip_prefix = "linux-5.17.4",
