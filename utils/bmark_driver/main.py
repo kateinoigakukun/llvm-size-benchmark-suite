@@ -72,6 +72,8 @@ class BenchmarkDriver:
     def run_case(self, case: BenchmarkCase, reporter: ConsoleReporter, options):
         cmd = case.plan(options)
         start = time.perf_counter()
+        if options.verbose:
+            print(" ".join(map(lambda x: "'" + x + "'", cmd)))
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         end = time.perf_counter()
         reporter.report(case, size=len(proc.stdout),
@@ -91,6 +93,7 @@ Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("-Xopt", action='append', help="Extra arguments to pass to opt")
     parser.add_argument("--suite-path", required=True, help="Path to benchmark suite directory")
     parser.add_argument("--db-path", help="Path to SQLite database")
+    parser.add_argument("--verbose", action='store_true', help="Print extra information")
 
     options = parser.parse_args()
     cases = list(BenchmarkDriver.find_cases(options.suite_path))
