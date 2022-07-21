@@ -72,6 +72,7 @@ bitcode_binary(
         "@mibench_consumer//:jpeg/jpeg-6a/jpeglib.h",
         "@mibench_consumer//:jpeg/jpeg-6a/jversion.h",
     ],
+    copts = ["-Wno-shift-negative-value"],
 )
 
 filegroup(
