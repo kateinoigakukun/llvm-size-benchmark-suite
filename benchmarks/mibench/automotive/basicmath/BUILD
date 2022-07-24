@@ -29,9 +29,11 @@ bitcode_binary(
     hdrs = [":basicmath_hdrs"]
 )
 
+bitcode_testcase(name = "empty_args", args = [])
 bitcode_testsuite(
     name = "basicmath_small_test",
     target = "basicmath_small.bc",
+    cases = [":empty_args"],
     ldflags = ["-lm"],
     visibility = ["//visibility:public"],
 )
@@ -39,6 +41,7 @@ bitcode_testsuite(
 bitcode_testsuite(
     name = "basicmath_large_test",
     target = "basicmath_large.bc",
+    cases = [":empty_args"],
     ldflags = ["-lm"],
     visibility = ["//visibility:public"],
 )

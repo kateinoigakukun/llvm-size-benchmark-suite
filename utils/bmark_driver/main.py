@@ -145,6 +145,7 @@ class BenchmarkDriver:
             self.run_testcase(case, build_plan["outputs"], options)
 
     def run_testcase(self, case: BenchmarkCase, build_outputs, options):
+        print(f"Testing {case.bitcode_path}")
         test_plan = case.plan_test(build_outputs, options)
         for pipeline in test_plan["pipelines"]:
             last_proc = self.run_pipeline(pipeline, test_plan.get("cwd", None), options)

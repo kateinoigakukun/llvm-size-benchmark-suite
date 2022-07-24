@@ -24,21 +24,15 @@ bitcode_binary(
 )
 
 bitcode_testcase(name = "bitcount_small_test_case", args = ["75000"])
-bitcode_testsuite(
-    name = "bitcount_small_test",
-    target = "bitcount.bc",
-    cases = [":bitcount_small_test_case"],
-)
-
 bitcode_testcase(name = "bitcount_large_test_case", args = ["1125000"])
 bitcode_testsuite(
-    name = "bitcount_large_test",
+    name = "bitcount_test",
     target = "bitcount.bc",
-    cases = [":bitcount_large_test_case"],
+    cases = [":bitcount_small_test_case", ":bitcount_large_test_case"],
 )
 
 filegroup(
     name = "all",
-    srcs = [":bitcount", ":bitcount_small_test", "bitcount_large_test"],
+    srcs = [":bitcount", ":bitcount_test"],
     visibility = ["//visibility:public"],
 )
