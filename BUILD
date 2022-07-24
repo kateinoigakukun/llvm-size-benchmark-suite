@@ -32,9 +32,9 @@ pkg_files(
 )
 
 pkg_files(
-    name = "mibench_consumer",
-    srcs = ["//benchmarks/mibench/consumer:all"],
-    prefix = "benchmarks/mibench/consumer",
+    name = "mibench_consumer_jpeg",
+    srcs = ["//benchmarks/mibench/consumer/jpeg:all"],
+    prefix = "benchmarks/mibench/consumer/jpeg",
 )
 
 pkg_tar(
@@ -45,6 +45,6 @@ pkg_tar(
         ":mibench_automotive_basicmath",
         ":mibench_automotive_bitcount",
         ":mibench_automotive_susan",
-        ":mibench_consumer",
+        ":mibench_consumer_jpeg",
     ],
 )
