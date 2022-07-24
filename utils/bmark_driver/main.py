@@ -4,6 +4,7 @@ import argparse
 import os
 import sqlite3
 import subprocess
+import sys
 import time
 
 
@@ -110,6 +111,17 @@ def make_reporter(options):
         return ConsoleReporter(options)
 
 
+def expand_response_file(args):
+    out = []
+    for arg in args:
+        if arg.startswith("@"):
+            with open(arg[1:]) as f:
+                out.extend(f.read().splitlines())
+        else:
+            out.append(arg)
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser(description="""
 Compare code sizes of differently optimized code from the same source code.""")
@@ -124,7 +136,8 @@ Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("--verbose", action='store_true',
                         help="Print extra information")
 
-    options = parser.parse_args()
+    args = expand_response_file(sys.argv[1:])
+    options = parser.parse_args(args)
     cases = list(BenchmarkDriver.find_cases(options.suite_path))
     reporter = make_reporter(options)
     driver = BenchmarkDriver(cases)
