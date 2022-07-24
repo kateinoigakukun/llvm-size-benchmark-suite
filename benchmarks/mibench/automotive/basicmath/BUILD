@@ -32,12 +32,14 @@ bitcode_binary(
 bitcode_testcase(
     name = "basicmath_small_test",
     target = "basicmath_small.bc",
+    ldflags = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
 bitcode_testcase(
     name = "basicmath_large_test",
     target = "basicmath_large.bc",
+    ldflags = ["-lm"],
     visibility = ["//visibility:public"],
 )
 

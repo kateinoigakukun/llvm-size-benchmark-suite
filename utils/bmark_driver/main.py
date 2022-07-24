@@ -6,6 +6,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 
 
@@ -17,6 +18,9 @@ class BenchmarkCase:
         self.bitcode_path = os.path.join(manifest_base, self.manifest["target"])
 
     def plan(self, options):
+        obj = tempfile.NamedTemporaryFile(
+            delete=False, prefix=self.manifest["name"], suffix=".o")
+        obj.close()
         opt_cmd = [options.opttool, self.bitcode_path]
         if options.pass_plugin:
             opt_cmd += ["--load", options.pass_plugin,
@@ -25,7 +29,25 @@ class BenchmarkCase:
             opt_cmd += options.Xopt
 
         llc_cmd = [options.llctool, "-filetype=obj", "-", "-o", "-"]
-        return [opt_cmd, llc_cmd]
+        tee_cmd = ["tee", obj.name]
+        return {
+            "pipelines": [[opt_cmd, llc_cmd, tee_cmd]],
+            "outputs": {
+                "object": obj.name,
+            }
+        }
+
+    def plan_test(self, options):
+        plan = self.plan(options)
+        exe = tempfile.NamedTemporaryFile(
+            delete=False, prefix=self.manifest["name"], suffix=".out")
+        exe.close()
+        link_cmd = [options.ldtool, plan["outputs"]["object"],
+                    "-o", exe.name] + self.manifest["ldflags"]
+        test_cmd = [exe.name] + self.manifest["args"]
+        plan["pipelines"].append([link_cmd])
+        plan["pipelines"].append([test_cmd])
+        return plan
 
 
 class ConsoleReporter:
@@ -82,26 +104,37 @@ class BenchmarkDriver:
     def format_command(self, cmd):
         return " ".join(map(lambda x: "'" + x + "'", cmd))
 
-    def run_case(self, case: BenchmarkCase, reporter: ConsoleReporter, options):
-        cmds = case.plan(options)
-        start = time.perf_counter()
+    def run_pipeline(self, pipeline: list, options):
         if options.verbose:
-            print(" | ".join(map(lambda cmd: self.format_command(cmd), cmds)))
+            print(" | ".join(map(lambda cmd: self.format_command(cmd), pipeline)))
 
         # create a pipeline through stdout/stdin
         procs = []
         last_proc = None
-        for cmd in cmds:
+        for cmd in pipeline:
             stdin = last_proc.stdout if last_proc else None
             last_proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=stdin)
             procs.append(last_proc)
 
-        for proc in reversed(procs):
+        for proc in procs[:-1]:
             proc.wait()
 
         last_proc = procs[-1]
-        output = last_proc.stdout.read()
+        return last_proc
+
+    def run_case(self, case: BenchmarkCase, reporter: ConsoleReporter, options):
+        plan = case.plan_test(options) if options.test else case.plan(options)
+        pipelines = plan["pipelines"]
+        start = time.perf_counter()
+        for pipeline in pipelines:
+            last_proc = self.run_pipeline(pipeline, options)
+            output = last_proc.stdout.read()
+            last_proc.wait()
+            if not last_proc.returncode == 0:
+                print("{} FAILED".format(case.manifest["name"]))
+                print(last_proc.stderr.read().decode('utf-8'), file=sys.stderr)
+                sys.exit(last_proc.returncode)
         end = time.perf_counter()
         reporter.report(case, size=len(output),
                         returncode=last_proc.returncode,
@@ -131,6 +164,7 @@ def main():
 Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("--opttool", default="opt", help="Path to opt tool")
     parser.add_argument("--llctool", default="llc", help="Path to llc tool")
+    parser.add_argument("--ldtool", default="ld.lld", help="Path to ld tool")
     parser.add_argument("--pass-plugin", help="Path to LLVM pass plugin")
     parser.add_argument("-Xopt", action='append',
                         help="Extra arguments to pass to opt")
@@ -139,6 +173,7 @@ Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("--db-path", help="Path to SQLite database")
     parser.add_argument("--verbose", action='store_true',
                         help="Print extra information")
+    parser.add_argument("--test", action='store_true', help="Perform test run")
 
     args = expand_response_file(sys.argv[1:])
     options = parser.parse_args(args)

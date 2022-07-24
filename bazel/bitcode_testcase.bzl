@@ -2,6 +2,7 @@ BITCODE_TESTCASE_ATTRS = {
     "target": attr.string(mandatory=True),
     "accessory_files": attr.string_list(default=[]),
     "args": attr.string_list(default=[]),
+    "ldflags": attr.string_list(default=[]),
 }
 
 def _bitcode_testcase(ctx):
@@ -14,6 +15,7 @@ def _bitcode_testcase(ctx):
                 "target": ctx.attr.target,
                 "accessory_files": ctx.attr.accessory_files,
                 "args": ctx.attr.args,
+                "ldflags": ctx.attr.ldflags,
             },
             indent="  ",
         ),
