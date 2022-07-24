@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import sqlite3
 import subprocess
@@ -9,8 +10,11 @@ import time
 
 
 class BenchmarkCase:
-    def __init__(self, bitcode_path):
-        self.bitcode_path = bitcode_path
+    def __init__(self, manifest_path):
+        with open(manifest_path) as f:
+            self.manifest = json.load(f)
+        manifest_base = os.path.dirname(manifest_path)
+        self.bitcode_path = os.path.join(manifest_base, self.manifest["target"])
 
     def plan(self, options):
         opt_cmd = [options.opttool, self.bitcode_path]
@@ -68,7 +72,7 @@ class BenchmarkDriver:
     def find_cases(suite_path):
         for root, _, files in os.walk(suite_path):
             for file in files:
-                if file.endswith(".bc"):
+                if file.endswith(".manifest.json"):
                     yield BenchmarkCase(os.path.join(root, file))
 
     def run(self, options, reporter: ConsoleReporter):
