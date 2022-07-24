@@ -20,6 +20,12 @@ pkg_files(
 )
 
 pkg_files(
+    name = "mibench_automotive_bitcount",
+    srcs = ["//benchmarks/mibench/automotive/bitcount:all"],
+    prefix = "benchmarks/mibench/automotive/bitcount",
+)
+
+pkg_files(
     name = "mibench_consumer",
     srcs = ["//benchmarks/mibench/consumer:all"],
     prefix = "benchmarks/mibench/consumer",
