@@ -8,9 +8,9 @@ pkg_files(
 )
 
 pkg_files(
-    name = "mibench_automotive",
-    srcs = ["//benchmarks/mibench/automotive:all"],
-    prefix = "benchmarks/mibench/automotive",
+    name = "mibench_automotive_qsort",
+    srcs = ["//benchmarks/mibench/automotive/qsort:all"],
+    prefix = "benchmarks/mibench/automotive/qsort",
 )
 
 pkg_files(
@@ -41,7 +41,7 @@ pkg_tar(
     name = "bitcode_tar",
     srcs = [
         ":linux",
-        ":mibench_automotive",
+        ":mibench_automotive_qsort",
         ":mibench_automotive_basicmath",
         ":mibench_automotive_bitcount",
         ":mibench_automotive_susan",
