@@ -14,8 +14,8 @@ class BenchmarkCase:
     def __init__(self, manifest_path):
         with open(manifest_path) as f:
             self.manifest = json.load(f)
-        manifest_base = os.path.dirname(manifest_path)
-        self.bitcode_path = os.path.join(manifest_base, self.manifest["target"])
+        self.manifest_base = os.path.dirname(manifest_path)
+        self.bitcode_path = os.path.join(self.manifest_base, self.manifest["target"])
 
     def plan(self, options):
         obj = tempfile.NamedTemporaryFile(
@@ -34,7 +34,8 @@ class BenchmarkCase:
             "pipelines": [[opt_cmd, llc_cmd, tee_cmd]],
             "outputs": {
                 "object": obj.name,
-            }
+            },
+            "cwd": self.manifest_base,
         }
 
     def plan_test(self, options):
@@ -104,9 +105,13 @@ class BenchmarkDriver:
     def format_command(self, cmd):
         return " ".join(map(lambda x: "'" + x + "'", cmd))
 
-    def run_pipeline(self, pipeline: list, options):
+    def run_pipeline(self, pipeline: list, cwd, options):
         if options.verbose:
-            print(" | ".join(map(lambda cmd: self.format_command(cmd), pipeline)))
+            print("(", end="")
+            if cwd is not None:
+                print(f"cd {cwd}; ", end="")
+            print(" | ".join(map(lambda cmd: self.format_command(cmd), pipeline)), end="")
+            print(")")
 
         # create a pipeline through stdout/stdin
         procs = []
@@ -114,7 +119,7 @@ class BenchmarkDriver:
         for cmd in pipeline:
             stdin = last_proc.stdout if last_proc else None
             last_proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=stdin)
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=stdin, cwd=cwd)
             procs.append(last_proc)
 
         for proc in procs[:-1]:
@@ -128,7 +133,7 @@ class BenchmarkDriver:
         pipelines = plan["pipelines"]
         start = time.perf_counter()
         for pipeline in pipelines:
-            last_proc = self.run_pipeline(pipeline, options)
+            last_proc = self.run_pipeline(pipeline, plan["cwd"], options)
             output = last_proc.stdout.read()
             last_proc.wait()
             if not last_proc.returncode == 0:
