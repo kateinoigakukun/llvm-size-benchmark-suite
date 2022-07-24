@@ -1,5 +1,5 @@
 load("//:bazel/bitcode.bzl", "bitcode_binary")
-load("//:bazel/bitcode_testcase.bzl", "bitcode_testcase")
+load("//:bazel/bitcode_test.bzl", "bitcode_testsuite", "bitcode_testcase")
 
 filegroup(
     name = "basicmath_base",
@@ -29,14 +29,14 @@ bitcode_binary(
     hdrs = [":basicmath_hdrs"]
 )
 
-bitcode_testcase(
+bitcode_testsuite(
     name = "basicmath_small_test",
     target = "basicmath_small.bc",
     ldflags = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
-bitcode_testcase(
+bitcode_testsuite(
     name = "basicmath_large_test",
     target = "basicmath_large.bc",
     ldflags = ["-lm"],

@@ -1,5 +1,5 @@
 load("//:bazel/bitcode.bzl", "bitcode_binary")
-load("//:bazel/bitcode_testcase.bzl", "bitcode_testcase")
+load("//:bazel/bitcode_test.bzl", "bitcode_testsuite", "bitcode_testcase")
 
 bitcode_binary(
     name = "bitcount",
@@ -23,18 +23,18 @@ bitcode_binary(
     ]
 )
 
-bitcode_testcase(
+bitcode_testcase(name = "bitcount_small_test_case", args = ["75000"])
+bitcode_testsuite(
     name = "bitcount_small_test",
     target = "bitcount.bc",
-    args = ["75000"],
-    visibility = ["//visibility:public"],
+    cases = [":bitcount_small_test_case"],
 )
 
-bitcode_testcase(
+bitcode_testcase(name = "bitcount_large_test_case", args = ["1125000"])
+bitcode_testsuite(
     name = "bitcount_large_test",
     target = "bitcount.bc",
-    args = ["1125000"],
-    visibility = ["//visibility:public"],
+    cases = [":bitcount_large_test_case"],
 )
 
 filegroup(

@@ -35,20 +35,22 @@ class BenchmarkCase:
             "outputs": {
                 "object": obj.name,
             },
-            "cwd": self.manifest_base,
         }
 
-    def plan_test(self, options):
-        plan = self.plan(options)
+    def plan_test(self, build_outputs, options):
         exe = tempfile.NamedTemporaryFile(
             delete=False, prefix=self.manifest["name"], suffix=".out")
         exe.close()
-        link_cmd = [options.ldtool, plan["outputs"]["object"],
+        link_cmd = [options.ldtool, build_outputs["object"],
                     "-o", exe.name] + self.manifest["ldflags"]
-        test_cmd = [exe.name] + self.manifest["args"]
-        plan["pipelines"].append([link_cmd])
-        plan["pipelines"].append([test_cmd])
-        return plan
+        test_cmds = []
+        for test in self.manifest["cases"]:
+            test_cmd = [exe.name] + test["args"]
+            test_cmds.append([test_cmd])
+        return {
+            "pipelines": [[link_cmd]] + test_cmds,
+            "cwd": self.manifest_base,
+        }
 
 
 class ConsoleReporter:
@@ -129,21 +131,29 @@ class BenchmarkDriver:
         return last_proc
 
     def run_case(self, case: BenchmarkCase, reporter: ConsoleReporter, options):
-        plan = case.plan_test(options) if options.test else case.plan(options)
-        pipelines = plan["pipelines"]
+        build_plan = case.plan(options)
         start = time.perf_counter()
-        for pipeline in pipelines:
-            last_proc = self.run_pipeline(pipeline, plan["cwd"], options)
+        for pipeline in build_plan["pipelines"]:
+            last_proc = self.run_pipeline(pipeline, None, options)
             output = last_proc.stdout.read()
+            last_proc.wait()
+        end = time.perf_counter()
+        reporter.report(case, size=len(output),
+                        returncode=last_proc.returncode,
+                        time=end - start, stderr=last_proc.stderr)
+        if options.test:
+            self.run_testcase(case, build_plan["outputs"], options)
+
+    def run_testcase(self, case: BenchmarkCase, build_outputs, options):
+        test_plan = case.plan_test(build_outputs, options)
+        for pipeline in test_plan["pipelines"]:
+            last_proc = self.run_pipeline(pipeline, test_plan.get("cwd", None), options)
+            last_proc.stdout.read()
             last_proc.wait()
             if not last_proc.returncode == 0:
                 print("{} FAILED".format(case.manifest["name"]))
                 print(last_proc.stderr.read().decode('utf-8'), file=sys.stderr)
                 sys.exit(last_proc.returncode)
-        end = time.perf_counter()
-        reporter.report(case, size=len(output),
-                        returncode=last_proc.returncode,
-                        time=end - start, stderr=last_proc.stderr)
 
 
 def make_reporter(options):
