@@ -14,6 +14,12 @@ pkg_files(
 )
 
 pkg_files(
+    name = "mibench_automotive_basicmath",
+    srcs = ["//benchmarks/mibench/automotive/basicmath:all"],
+    prefix = "benchmarks/mibench/automotive/basicmath",
+)
+
+pkg_files(
     name = "mibench_consumer",
     srcs = ["//benchmarks/mibench/consumer:all"],
     prefix = "benchmarks/mibench/consumer",
@@ -24,6 +30,7 @@ pkg_tar(
     srcs = [
         ":linux",
         ":mibench_automotive",
+        ":mibench_automotive_basicmath",
         ":mibench_consumer",
     ],
 )
