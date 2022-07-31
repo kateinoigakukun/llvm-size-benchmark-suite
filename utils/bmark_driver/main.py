@@ -29,9 +29,10 @@ class BenchmarkCase:
             opt_cmd += options.Xopt
 
         llc_cmd = [options.llctool, "-filetype=obj", "-", "-o", obj.name]
+        strip_cmd = ["strip", obj.name]
         cat_cmd = ["cat", obj.name]
         return {
-            "pipelines": [[opt_cmd, llc_cmd], [cat_cmd]],
+            "pipelines": [[opt_cmd, llc_cmd], [strip_cmd], [cat_cmd]],
             "outputs": {
                 "object": obj.name,
             },
