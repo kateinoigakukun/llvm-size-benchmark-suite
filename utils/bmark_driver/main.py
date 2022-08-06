@@ -31,8 +31,14 @@ class BenchmarkCase:
         llc_cmd = [options.llctool, "-filetype=obj", "-", "-o", obj.name]
         strip_cmd = ["strip", obj.name]
         cat_cmd = ["cat", obj.name]
+
+        pipelines = [[opt_cmd, llc_cmd]]
+        if not options.test:
+            pipelines.append([strip_cmd])
+        pipelines.append([cat_cmd])
+
         return {
-            "pipelines": [[opt_cmd, llc_cmd], [strip_cmd], [cat_cmd]],
+            "pipelines": pipelines,
             "outputs": {
                 "object": obj.name,
             },
