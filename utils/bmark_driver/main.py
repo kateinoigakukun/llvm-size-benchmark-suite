@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import multiprocessing
 
 
 class BenchmarkCase:
@@ -15,7 +16,8 @@ class BenchmarkCase:
         with open(manifest_path) as f:
             self.manifest = json.load(f)
         self.manifest_base = os.path.dirname(manifest_path)
-        self.bitcode_path = os.path.join(self.manifest_base, self.manifest["target"])
+        self.bitcode_path = os.path.join(
+            self.manifest_base, self.manifest["target"])
 
     def plan(self, options):
         obj = tempfile.NamedTemporaryFile(
@@ -96,6 +98,16 @@ class SQLiteReporter:
         self.db.commit()
 
 
+class WorkContext:
+    def __init__(self, driver, reporter, options):
+        self.driver = driver
+        self.reporter = reporter
+        self.options = options
+
+    def work(self, case):
+        self.driver.run_case(case, self.reporter, self.options)
+
+
 class BenchmarkDriver:
     def __init__(self, cases):
         self.cases = cases
@@ -108,8 +120,13 @@ class BenchmarkDriver:
                     yield BenchmarkCase(os.path.join(root, file))
 
     def run(self, options, reporter: ConsoleReporter):
-        for case in self.cases:
-            self.run_case(case, reporter, options)
+        if options.paralell:
+            with multiprocessing.Pool() as pool:
+                context = WorkContext(self, reporter, options)
+                pool.map(context.work, self.cases)
+        else:
+            for case in self.cases:
+                self.run_case(case, reporter, options)
 
     def format_command(self, cmd):
         return " ".join(map(lambda x: "'" + x + "'", cmd))
@@ -155,7 +172,8 @@ class BenchmarkDriver:
         print(f"Testing {case.bitcode_path}")
         test_plan = case.plan_test(build_outputs, options)
         for pipeline in test_plan["pipelines"]:
-            last_proc = self.run_pipeline(pipeline, test_plan.get("cwd", None), options)
+            last_proc = self.run_pipeline(
+                pipeline, test_plan.get("cwd", None), options)
             last_proc.stdout.read()
             last_proc.wait()
             if not last_proc.returncode == 0:
@@ -197,6 +215,8 @@ Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("--verbose", action='store_true',
                         help="Print extra information")
     parser.add_argument("--test", action='store_true', help="Perform test run")
+    parser.add_argument("--paralell", action='store_true',
+                        help="Perform commands in paralell")
 
     args = expand_response_file(sys.argv[1:])
     options = parser.parse_args(args)
