@@ -18,10 +18,11 @@ class BenchmarkCase:
         self.manifest_base = os.path.dirname(manifest_path)
         self.bitcode_path = os.path.join(
             self.manifest_base, self.manifest["target"])
+        self.name = self.manifest["name"]
 
     def plan(self, options):
         obj = tempfile.NamedTemporaryFile(
-            delete=False, prefix=self.manifest["name"], suffix=".o")
+            delete=False, prefix=self.name, suffix=".o")
         obj.close()
         opt_cmd = [options.opttool, self.bitcode_path]
         if options.pass_plugin:
@@ -48,7 +49,7 @@ class BenchmarkCase:
 
     def plan_test(self, build_outputs, options):
         exe = tempfile.NamedTemporaryFile(
-            delete=False, prefix=self.manifest["name"], suffix=".out")
+            delete=False, prefix=self.name, suffix=".out")
         exe.close()
         link_cmd = [options.ldtool, build_outputs["object"],
                     "-o", exe.name] + self.manifest["ldflags"]
@@ -62,16 +63,53 @@ class BenchmarkCase:
         }
 
 
-class ConsoleReporter:
-    def __init__(self, options):
-        self.options = options
+class BenchmarkResult:
+    def __init__(self, case, size, returncode, time, stderr):
+        self.case = case
+        self.size = size
+        self.returncode = returncode
+        self.time = time
+        self.stderr = stderr
 
-    def report(self, case, size, returncode, time, stderr):
-        print("{} {} {} {}".format(case.bitcode_path, size, returncode, time))
+    def __iter__(self):
+        return iter((self.case, self.size, self.returncode, self.time, self.stderr))
+
+
+class NopReporter:
+    def report(self, result):
+        pass
+
+    def flush(self):
         pass
 
 
-class SQLiteReporter:
+class ConsoleReporter(NopReporter):
+    def __init__(self, options):
+        self.options = options
+
+    def report(self, result):
+        case, size, returncode, time, stderr = result
+        print("{} {} {} {}".format(case.bitcode_path, size, returncode, time))
+
+
+class MarkdownReporter(NopReporter):
+    def __init__(self, options):
+        self.options = options
+        self.rows_by_name = dict()
+
+    def report(self, result):
+        case, size, returncode, time, stderr = result
+        status = "Passed" if returncode == 0 else "Failed"
+        self.rows_by_name[case.name] = f"| `{case.bitcode_path}` | {size} | {status} | {time} |"
+
+    def flush(self):
+        print("| Name | Size (byte) | Status | Time (sec) |")
+        print("|:----:|:-----------:|:------:|:----------:|")
+        for key in self.rows_by_name.keys():
+            print(self.rows_by_name[key])
+
+
+class SQLiteReporter(NopReporter):
     def __init__(self, options):
         self.options = options
         self.db = sqlite3.connect(options.db_path)
@@ -85,7 +123,8 @@ class SQLiteReporter:
             )
         """)
 
-    def report(self, case, size, returncode, time, stderr):
+    def report(self, result):
+        case, size, returncode, time, stderr = result
         self.db.execute("""
             INSERT INTO results (
                 bitcode_path,
@@ -105,7 +144,7 @@ class WorkContext:
         self.options = options
 
     def work(self, case):
-        self.driver.run_case(case, self.reporter, self.options)
+        return self.driver.run_case(case, self.reporter, self.options)
 
 
 class BenchmarkDriver:
@@ -119,14 +158,16 @@ class BenchmarkDriver:
                 if file.endswith(".manifest.json"):
                     yield BenchmarkCase(os.path.join(root, file))
 
-    def run(self, options, reporter: ConsoleReporter):
+    def run(self, options, reporter):
         if options.paralell:
             with multiprocessing.Pool() as pool:
                 context = WorkContext(self, reporter, options)
-                pool.map(context.work, self.cases)
+                for result in pool.map(context.work, self.cases):
+                    reporter.report(result)
         else:
             for case in self.cases:
-                self.run_case(case, reporter, options)
+                result = self.run_case(case, reporter, options)
+                reporter.report(result)
 
     def format_command(self, cmd):
         return " ".join(map(lambda x: "'" + x + "'", cmd))
@@ -154,7 +195,7 @@ class BenchmarkDriver:
         last_proc = procs[-1]
         return last_proc
 
-    def run_case(self, case: BenchmarkCase, reporter: ConsoleReporter, options):
+    def run_case(self, case: BenchmarkCase, reporter, options):
         build_plan = case.plan(options)
         start = time.perf_counter()
         for pipeline in build_plan["pipelines"]:
@@ -162,11 +203,12 @@ class BenchmarkDriver:
             output = last_proc.stdout.read()
             last_proc.wait()
         end = time.perf_counter()
-        reporter.report(case, size=len(output),
-                        returncode=last_proc.returncode,
-                        time=end - start, stderr=last_proc.stderr)
+        result = BenchmarkResult(case=case, size=len(output),
+                                 returncode=last_proc.returncode,
+                                 time=end - start, stderr=last_proc.stderr.read())
         if options.test:
             self.run_testcase(case, build_plan["outputs"], options)
+        return result
 
     def run_testcase(self, case: BenchmarkCase, build_outputs, options):
         print(f"Testing {case.bitcode_path}")
@@ -183,6 +225,13 @@ class BenchmarkDriver:
 
 
 def make_reporter(options):
+    if options.reporter == "console":
+        return ConsoleReporter(options)
+    elif options.reporter == "sqlite":
+        return SQLiteReporter(options)
+    elif options.reporter == "markdown":
+        return MarkdownReporter(options)
+
     if options.db_path:
         return SQLiteReporter(options)
     else:
@@ -211,6 +260,8 @@ Compare code sizes of differently optimized code from the same source code.""")
                         help="Extra arguments to pass to opt")
     parser.add_argument("--suite-path", required=True,
                         help="Path to benchmark suite directory")
+    parser.add_argument("--reporter", default=None,
+                        help="Reporter to show results")
     parser.add_argument("--db-path", help="Path to SQLite database")
     parser.add_argument("--verbose", action='store_true',
                         help="Print extra information")
@@ -224,6 +275,7 @@ Compare code sizes of differently optimized code from the same source code.""")
     reporter = make_reporter(options)
     driver = BenchmarkDriver(cases)
     driver.run(options, reporter)
+    reporter.flush()
 
 
 if __name__ == "__main__":
