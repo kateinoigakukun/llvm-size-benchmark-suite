@@ -159,15 +159,20 @@ class BenchmarkDriver:
                     yield BenchmarkCase(os.path.join(root, file))
 
     def run(self, options, reporter):
+        def handle_result(result):
+            reporter.report(result)
+            if options.test and result.returncode != 0:
+                sys.exit(result.returncode)
+
         if options.paralell:
             with multiprocessing.Pool() as pool:
                 context = WorkContext(self, reporter, options)
                 for result in pool.map(context.work, self.cases):
-                    reporter.report(result)
+                    handle_result(result)
         else:
             for case in self.cases:
                 result = self.run_case(case, reporter, options)
-                reporter.report(result)
+                handle_result(result)
 
     def format_command(self, cmd):
         return " ".join(map(lambda x: "'" + x + "'", cmd))
@@ -207,12 +212,13 @@ class BenchmarkDriver:
                                  returncode=last_proc.returncode,
                                  time=end - start, stderr=last_proc.stderr.read())
         if options.test:
-            self.run_testcase(case, build_plan["outputs"], options)
+            return self.run_testcase(case, build_plan["outputs"], options)
         return result
 
     def run_testcase(self, case: BenchmarkCase, build_outputs, options):
         print(f"Testing {case.bitcode_path}")
         test_plan = case.plan_test(build_outputs, options)
+        start = time.perf_counter()
         for pipeline in test_plan["pipelines"]:
             last_proc = self.run_pipeline(
                 pipeline, test_plan.get("cwd", None), options)
@@ -221,7 +227,11 @@ class BenchmarkDriver:
             if not last_proc.returncode == 0:
                 print("{} FAILED".format(case.manifest["name"]))
                 print(last_proc.stderr.read().decode('utf-8'), file=sys.stderr)
-                sys.exit(last_proc.returncode)
+                break
+        end = time.perf_counter()
+        return BenchmarkResult(case=case, size=None,
+                               returncode=last_proc.returncode,
+                               time=end - start, stderr=last_proc.stderr.read())
 
 
 def make_reporter(options):
