@@ -28,10 +28,12 @@ class BenchmarkCase:
             os.mkdir(output_path)
 
         bc_path = os.path.join(output_path, "obj.bc")
+        remarks_path = os.path.join(output_path, "remarks.yaml")
         obj_path = os.path.join(output_path, "obj.o")
         obj_strip_path = os.path.join(output_path, "obj.strip.o")
 
-        opt_cmd = [options.opttool, self.bitcode_path, "-o", bc_path]
+        opt_cmd = [options.opttool, self.bitcode_path, "-o",
+                   bc_path, "--pass-remarks-output", remarks_path]
         if options.pass_plugin:
             opt_cmd += ["--load", options.pass_plugin,
                         "--load-pass-plugin", options.pass_plugin]
