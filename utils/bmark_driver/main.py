@@ -21,29 +21,37 @@ class BenchmarkCase:
         self.name = self.manifest["name"]
 
     def plan(self, options):
-        obj = tempfile.NamedTemporaryFile(
-            delete=False, prefix=self.name, suffix=".o")
-        obj.close()
-        opt_cmd = [options.opttool, self.bitcode_path]
+        output_path = os.path.abspath(
+            os.path.join(options.output_dir, self.name))
+
+        os.mkdir(output_path)
+
+        bc_path = os.path.join(output_path, "obj.bc")
+        obj_path = os.path.join(output_path, "obj.o")
+        obj_strip_path = os.path.join(output_path, "obj.strip.o")
+
+        opt_cmd = [options.opttool, self.bitcode_path, "-o", bc_path]
         if options.pass_plugin:
             opt_cmd += ["--load", options.pass_plugin,
                         "--load-pass-plugin", options.pass_plugin]
         if options.Xopt:
             opt_cmd += options.Xopt
 
-        llc_cmd = [options.llctool, "-filetype=obj", "-", "-o", obj.name]
-        strip_cmd = ["strip", obj.name]
-        cat_cmd = ["cat", obj.name]
+        llc_cmd = [options.llctool, "-filetype=obj", bc_path, "-o", obj_path]
+        strip_cmd = ["strip", obj_path, "-o", obj_strip_path]
 
-        pipelines = [[opt_cmd, llc_cmd]]
+        pipelines = [[opt_cmd], [llc_cmd]]
+
+        cat_cmd = ["cat", obj_path]
         if not options.test:
             pipelines.append([strip_cmd])
+            cat_cmd = ["cat", obj_strip_path]
         pipelines.append([cat_cmd])
 
         return {
             "pipelines": pipelines,
             "outputs": {
-                "object": obj.name,
+                "object": obj_path,
             },
         }
 
@@ -278,10 +286,14 @@ Compare code sizes of differently optimized code from the same source code.""")
     parser.add_argument("--test", action='store_true', help="Perform test run")
     parser.add_argument("--paralell", action='store_true',
                         help="Perform commands in paralell")
+    parser.add_argument("--output-dir", default="./benchmarks-out",
+                        help="Path to a directory where results will be output")
 
     args = expand_response_file(sys.argv[1:])
     options = parser.parse_args(args)
     cases = list(BenchmarkDriver.find_cases(options.suite_path))
+    if not os.path.exists(options.output_dir):
+        os.makedirs(options.output_dir)
     reporter = make_reporter(options)
     driver = BenchmarkDriver(cases)
     driver.run(options, reporter)
