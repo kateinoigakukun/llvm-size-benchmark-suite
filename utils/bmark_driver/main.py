@@ -24,7 +24,8 @@ class BenchmarkCase:
         output_path = os.path.abspath(
             os.path.join(options.output_dir, self.name))
 
-        os.mkdir(output_path)
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
 
         bc_path = os.path.join(output_path, "obj.bc")
         obj_path = os.path.join(output_path, "obj.o")
