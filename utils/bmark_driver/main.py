@@ -162,6 +162,10 @@ class BenchmarkDriver:
 
     @staticmethod
     def find_cases(suite_path):
+        if suite_path.endswith(".manifest.json"):
+            yield BenchmarkCase(suite_path)
+            return
+
         for root, _, files in os.walk(suite_path):
             for file in files:
                 if file.endswith(".manifest.json"):
