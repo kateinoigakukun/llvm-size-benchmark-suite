@@ -222,11 +222,13 @@ class BenchmarkDriver:
             last_proc = self.run_pipeline(pipeline, None, options)
             output = last_proc.stdout.read()
             last_proc.wait()
+            if last_proc.returncode != 0:
+                break
         end = time.perf_counter()
         result = BenchmarkResult(case=case, size=len(output),
                                  returncode=last_proc.returncode,
                                  time=end - start, stderr=last_proc.stderr.read())
-        if options.test:
+        if options.test and result.returncode == 0:
             return self.run_testcase(case, build_plan["outputs"], options)
         return result
 
