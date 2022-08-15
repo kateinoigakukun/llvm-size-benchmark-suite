@@ -37,6 +37,12 @@ pkg_files(
     prefix = "benchmarks/mibench/consumer/jpeg",
 )
 
+pkg_files(
+    name = "rustc_perf",
+    srcs = ["//benchmarks/rustc-perf:all"],
+    prefix = "benchmarks/rustc-perf",
+)
+
 pkg_tar(
     name = "bitcode_tar",
     srcs = [
@@ -46,5 +52,6 @@ pkg_tar(
         ":mibench_automotive_bitcount",
         ":mibench_automotive_susan",
         ":mibench_consumer_jpeg",
+        ":rustc_perf",
     ],
 )

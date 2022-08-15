@@ -33,6 +33,20 @@ llvm_toolchain(
     llvm_version = "13.0.0",
 )
 
+http_archive(
+    name = "rules_rust",
+    sha256 = "6bfe75125e74155955d8a9854a8811365e6c0f3d33ed700bc17f39e32522c822",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
+        "https://github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
+    ],
+)
+
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains")
+
+rules_rust_dependencies()
+
+rust_register_toolchains(version = "1.59.0")
 
 # Benchmark source code
 
@@ -65,4 +79,20 @@ filegroup(
 exports_files(glob(["**"]))
 """,
     url = "https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.17.4.tar.xz",
+)
+
+http_archive(
+    name = "rustc_perf",
+    sha256 = "b40dedbafcd8113d4283700f5ac52bded0ca58e846d8cbda1c446ee78f9e2920",
+    strip_prefix = "rust-lang-rustc-perf-0fd5c19",
+    type = "tgz",
+    build_file_content = """
+filegroup(
+    name = "all",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+exports_files(glob(["**"]))
+""",
+    url = "https://github.com/rust-lang/rustc-perf/tarball/0fd5c1921c306ccb9df865630145d07c028cb3d5",
 )
