@@ -15,7 +15,7 @@ def main():
     options = parser.parse_args()
 
     with TemporaryDirectory() as tmpdir:
-        cargo_cmd = ["/home/katei/.cargo/bin/cargo", "build", "--release",
+        cargo_cmd = [os.path.join(os.getcwd(), os.environ["CARGO"]), "build", "--release",
                      "--tests", "--target-dir", tmpdir]
         cc = os.path.join(os.getcwd(), os.environ["CC"])
         cargo_home = os.path.join(tmpdir, ".cargo-home")

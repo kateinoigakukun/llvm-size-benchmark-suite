@@ -43,6 +43,7 @@ def _cargo_test_bitcode(ctx):
             "CC": cc_toolchain.compiler_executable,
             "LD": cc_toolchain.ld_executable,
             "RUSTC": rust_toolchain.rustc.path,
+            "CARGO": rust_toolchain.cargo.path,
         },
     )
 
